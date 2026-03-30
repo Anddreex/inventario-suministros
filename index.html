@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario — Gestión Documental</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#f0f2f5;color:#1a1a1a;min-height:100vh}
+.top-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:1rem 1.25rem;border-bottom:3px solid #1D9E75;background:#fff}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-dot{width:36px;height:36px;border-radius:10px;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:700;flex-shrink:0}
+.app-name{font-size:18px;font-weight:700;color:#0A5C45}
+.app-sub{font-size:11px;color:#888;margin-top:1px}
+.btn-add{padding:8px 18px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em}
+.btn-add:hover{background:#0F6E56}
+.kpi-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:1rem 1.25rem;background:#fff;border-bottom:1px solid #e8e8e0}
+.kpi{border-radius:10px;padding:0.75rem 1rem;text-align:center;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
+.kpi.total::before{background:#1D9E75} .kpi.aseo::before{background:#185FA5}
+.kpi.papel::before{background:#534AB7} .kpi.cafet::before{background:#854F0B}
+.kpi.alerta::before{background:#A32D2D}
+.kpi-label{font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.kpi-val{font-size:26px;font-weight:700}
+.kpi.total{background:#E1F5EE;} .kpi.total .kpi-label{color:#0F6E56} .kpi.total .kpi-val{color:#085041}
+.kpi.aseo{background:#E6F1FB;} .kpi.aseo .kpi-label{color:#185FA5} .kpi.aseo .kpi-val{color:#0C447C}
+.kpi.papel{background:#EEEDFE;} .kpi.papel .kpi-label{color:#534AB7} .kpi.papel .kpi-val{color:#3C3489}
+.kpi.cafet{background:#FAEEDA;} .kpi.cafet .kpi-label{color:#854F0B} .kpi.cafet .kpi-val{color:#633806}
+.kpi.alerta{background:#FCEBEB;} .kpi.alerta .kpi-label{color:#A32D2D} .kpi.alerta .kpi-val{color:#791F1F}
+.filter-bar{display:flex;gap:6px;padding:0.75rem 1.25rem;flex-wrap:wrap;align-items:center;background:#fff;border-bottom:1px solid #e8e8e0}
+.pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;background:#f0f2f5;color:#888;transition:all .15s}
+.pill:hover{background:#e4e6ea}
+.pill.a-all{background:#E1F5EE;color:#0F6E56;border-color:#5DCAA5}
+.pill.a-aseo{background:#E6F1FB;color:#185FA5;border-color:#85B7EB}
+.pill.a-papel{background:#EEEDFE;color:#534AB7;border-color:#AFA9EC}
+.pill.a-cafeteria{background:#FAEEDA;color:#854F0B;border-color:#EF9F27}
+.pill.a-mobiliario{background:#F1EFE8;color:#5F5E5A;border-color:#B4B2A9}
+.pill.a-alerta{background:#FCEBEB;color:#A32D2D;border-color:#F09595}
+.search-box{margin-left:auto;padding:7px 14px;border:1.5px solid #ddd;border-radius:20px;font-size:13px;background:#fff;color:#1a1a1a;width:210px;transition:border-color .15s}
+.search-box:focus{outline:none;border-color:#1D9E75}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;padding:1.25rem}
+.card{background:#fff;border:1px solid #e4e6ea;border-radius:14px;padding:1.1rem;transition:box-shadow .15s,border-color .15s;position:relative}
+.card:hover{border-color:#1D9E75;box-shadow:0 4px 16px rgba(29,158,117,.10)}
+.card.low{border-top:3px solid #EF9F27}
+.card.out{border-top:3px solid #E24B4A}
+.card.venc{border-top:3px solid #A32D2D}
+.card.ok{border-top:3px solid #1D9E75}
+.cat-strip{position:absolute;top:0;right:0;width:5px;height:100%;border-radius:0 14px 14px 0}
+.cat-strip.ASEO{background:#E6F1FB} .cat-strip.PAPELERIA{background:#EEEDFE}
+.cat-strip.CAFETERIA{background:#FAEEDA} .cat-strip.MOBILIARIO{background:#F1EFE8}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.card-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.card-icon.ASEO{background:#E6F1FB} .card-icon.PAPELERIA{background:#EEEDFE}
+.card-icon.CAFETERIA{background:#FAEEDA} .card-icon.MOBILIARIO{background:#F1EFE8}
+.card-name{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:2px;line-height:1.35;padding-right:10px}
+.card-marca{font-size:11px;color:#aaa;margin-bottom:10px}
+.progress-wrap{background:#f0f2f5;border-radius:6px;height:7px;margin-bottom:7px;overflow:hidden}
+.progress-bar{height:7px;border-radius:6px;transition:width .3s}
+.bar-ok{background:#1D9E75} .bar-low{background:#EF9F27} .bar-out{background:#E24B4A}
+.qty-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.qty-block{}
+.qty-num{font-size:20px;font-weight:700;line-height:1}
+.qty-unit{font-size:10px;color:#aaa;margin-top:1px}
+.qty-min{font-size:10px;color:#bbb;text-align:right}
+.tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;display:inline-block}
+.tag.ok{background:#EAF3DE;color:#3B6D11} .tag.low{background:#FAEEDA;color:#854F0B} .tag.out{background:#FCEBEB;color:#A32D2D}
+.qty-num.ok{color:#0F6E56} .qty-num.low{color:#854F0B} .qty-num.out{color:#A32D2D}
+.venc-badge{font-size:9px;padding:2px 7px;border-radius:7px;background:#FCEBEB;color:#A32D2D;font-weight:700}
+.obs-box{font-size:10px;color:#666;background:#f8f8f5;border-radius:5px;padding:4px 8px;margin-bottom:9px;line-height:1.4}
+.card-btns{display:flex;gap:6px;margin-top:2px}
+.btn-edit{flex:1;padding:5px;font-size:11px;border:1.5px solid #e4e6ea;border-radius:8px;cursor:pointer;background:#fff;color:#666;font-weight:600;transition:all .15s}
+.btn-edit:hover{border-color:#1D9E75;color:#0F6E56}
+.btn-mov{flex:1;padding:5px;font-size:11px;border-radius:8px;border:none;background:#1D9E75;color:#fff;cursor:pointer;font-weight:700;transition:background .15s}
+.btn-mov:hover{background:#0F6E56}
+.empty-msg{text-align:center;padding:3rem;color:#aaa;font-size:14px;grid-column:1/-1}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px}
+.overlay.open{display:flex}
+.panel{background:#fff;border-radius:14px;border:1px solid #e4e6ea;padding:1.5rem;width:400px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.12)}
+.panel h3{font-size:16px;font-weight:700;color:#0A5C45;margin-bottom:1.1rem;padding-bottom:0.75rem;border-bottom:1px solid #f0f2f5}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:#888;margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select{width:100%;padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:#1D9E75}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pnl-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:1.25rem;flex-wrap:wrap}
+.btn-cancel{padding:8px 16px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#666;font-weight:600}
+.btn-save{padding:8px 18px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#1D9E75;color:#fff}
+.btn-save:hover{background:#0F6E56}
+.btn-del{padding:8px 14px;border:1.5px solid #F09595;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#A32D2D;margin-right:auto;font-weight:600}
+.mov-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.mtab{padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;border:1.5px solid #ddd;color:#888;background:#fff;transition:all .15s}
+.mtab.e.act{background:#EAF3DE;color:#3B6D11;border-color:#97C459}
+.mtab.s.act{background:#FCEBEB;color:#A32D2D;border-color:#F09595}
+.hist-section{background:#fff;border-top:1px solid #e8e8e0;padding:0 1.25rem 1.25rem;margin-top:4px}
+.hist-header{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0 0.5rem}
+.hist-title{font-size:13px;font-weight:700;color:#444}
+.hist-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}
+.hico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.hico.e{background:#EAF3DE;color:#3B6D11} .hico.s{background:#FCEBEB;color:#A32D2D}
+.hinfo{flex:1;min-width:0}
+.hname{font-size:13px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmeta{font-size:11px;color:#aaa}
+.hqty{font-size:13px;font-weight:700}
+.hqty.e{color:#3B6D11} .hqty.s{color:#A32D2D}
+.no-hist{text-align:center;padding:1.5rem;color:#bbb;font-size:13px}
+/* Top buttons */
+.btn-sec{padding:8px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#444;font-weight:600;transition:all .15s}
+.btn-sec:hover{background:#f0f2f5}
+.btn-menu-wrap{position:relative}
+.dropdown{display:none;position:absolute;right:0;top:110%;background:#fff;border:1px solid #e4e6ea;border-radius:12px;min-width:240px;z-index:500;box-shadow:0 6px 24px rgba(0,0,0,0.12)}
+.dropdown.open{display:block}
+.dd-title{padding:8px 16px 4px;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em}
+.dd-item{padding:10px 16px;font-size:13px;cursor:pointer;color:#1a1a1a;display:flex;align-items:center;gap:10px;border-top:1px solid #f0f2f5;transition:background .1s}
+.dd-item:hover{background:#f8f9fb}
+.dd-item.danger{color:#A32D2D} .dd-item.danger:hover{background:#FCEBEB}
+/* Source bar */
+.source-bar{background:#fff;border-bottom:1px solid #e8e8e0;padding:5px 1.25rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.source-label{font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:.04em}
+.source-val{font-size:11px;color:#555;font-weight:600}
+.source-sep{color:#ddd;font-size:11px;margin:0 2px}
+/* SP */
+.sp-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sp-dot.on{background:#1D9E75} .sp-dot.off{background:#ccc}
+.sp-sync-badge{font-size:10px;background:#E1F5EE;color:#0F6E56;border-radius:6px;padding:2px 8px;font-weight:700}
+.sp-code-box{background:linear-gradient(135deg,#0A5C45,#1D9E75);border-radius:12px;padding:1.4rem;text-align:center;margin:1rem 0}
+.sp-code{font-size:36px;font-weight:700;letter-spacing:10px;color:#fff;font-family:monospace;display:block}
+.sp-code-sub{font-size:11px;color:#A8D8C8;margin-top:6px}
+.sp-url-link{display:inline-block;margin-top:10px;font-size:13px;color:#7EDAD0;font-weight:700;cursor:pointer;text-decoration:underline}
+.sp-status{padding:10px 16px;border-radius:9px;font-size:12px;font-weight:700;text-align:center;margin-top:12px}
+.sp-status.espera{background:#FFF3CD;color:#854F0B}
+.sp-status.ok{background:#EAF3DE;color:#3B6D11}
+.sp-status.err{background:#FCEBEB;color:#A32D2D}
+.sp-pasos{font-size:12px;color:#555;line-height:2.1;margin:1rem 0 0;background:#f8f9fb;border-radius:8px;padding:10px 14px}
+.sp-pasos b{color:#0A5C45}
+.sp-info-box{background:#E6F1FB;border-radius:9px;padding:10px 14px;font-size:12px;color:#185FA5;margin-bottom:1rem;line-height:1.7}
+@media(max-width:540px){.kpi-row{grid-template-columns:repeat(3,1fr)}.kpi.cafet{display:none}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="brand">
+    <div class="brand-dot">GD</div>
+    <div>
+      <div class="app-name">Inventario de Suministros</div>
+      <div class="app-sub">Gestión Documental · Agropecuaria Santamaría</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button class="btn-sec" onclick="toggleHist()">📋 Historial</button>
+    <div class="btn-menu-wrap" id="menuWrap">
+      <button class="btn-sec" onclick="toggleMenu()">⚙️ Opciones ▾</button>
+      <div class="dropdown" id="dropdown">
+        <div class="dd-title">☁️ SharePoint</div>
+        <div class="dd-item" id="ddSP" onclick="abrirSharePoint()">
+          <span class="sp-dot off" id="spDot"></span>
+          <span id="spLabel">Conectar con SharePoint</span>
+        </div>
+        <div class="dd-item" id="ddSPSync" onclick="sincronizarSP(false)" style="display:none">↑ Sincronizar ahora</div>
+        <div class="dd-item danger" id="ddSPDesc" onclick="desconectarSP()" style="display:none">✕ Desconectar SharePoint</div>
+        <div class="dd-title">📊 Exportar</div>
+        <div class="dd-item" onclick="exportarExcel()">⬇️ Descargar Excel (.csv)</div>
+        <div class="dd-title">💾 Copia de seguridad</div>
+        <div class="dd-item" onclick="hacerCopia()">💾 Descargar copia (.json)</div>
+        <div class="dd-item" onclick="document.getElementById('inputCopia').click()">📂 Restaurar desde copia</div>
+        <input type="file" id="inputCopia" accept=".json" style="display:none" onchange="restaurarCopia(event)">
+        <div class="dd-title">⚠️ Datos</div>
+        <div class="dd-item danger" onclick="resetearDatos()">↺ Restablecer datos originales</div>
+      </div>
+    </div>
+    <button class="btn-add" onclick="abrirAgregar()">+ Nuevo producto</button>
+  </div>
+</div>
+
+<div class="source-bar" id="sourceBar">
+  <span class="source-label">Fuente</span>
+  <span class="source-val">Relacion_inventario_papeleria__cafeteria_y_aseo.xlsx</span>
+  <span class="source-sep">|</span>
+  <span class="source-label">Mod.</span>
+  <span class="source-val" id="ultimaMod">—</span>
+  <span class="source-sep">|</span>
+  <span class="source-label">Por</span>
+  <span class="source-val" id="ultimoResp">—</span>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="filter-bar">
+  <button class="pill a-all" id="p-all" onclick="setF('all')">Todos</button>
+  <button class="pill" id="p-ASEO" onclick="setF('ASEO')">🧴 Aseo</button>
+  <button class="pill" id="p-PAPELERIA" onclick="setF('PAPELERIA')">📄 Papelería</button>
+  <button class="pill" id="p-CAFETERIA" onclick="setF('CAFETERIA')">☕ Cafetería</button>
+  <button class="pill" id="p-MOBILIARIO" onclick="setF('MOBILIARIO')">🗄️ Mobiliario</button>
+  <button class="pill" id="p-ALERTA" onclick="setF('ALERTA')">⚠️ Con alerta</button>
+  <input class="search-box" id="buscador" placeholder="🔍 Buscar producto o marca..." oninput="render()">
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="hist-section" id="histSection" style="display:none">
+  <div class="hist-header">
+    <span class="hist-title">📋 Últimos movimientos</span>
+  </div>
+  <div id="histList"></div>
+</div>
+
+<!-- Panel SharePoint -->
+<div class="overlay" id="ovSP">
+  <div class="panel">
+    <h3>☁️ Conectar con SharePoint</h3>
+    <div id="spVista1">
+      <div class="sp-info-box">
+        <b>Sitio:</b> agrowebsas.sharepoint.com/sites/GESTIONDOCUMENTALGRUPOASM<br>
+        <b>Carpeta:</b> Inventario_Suministros (se crea automáticamente)<br>
+        <b>Método:</b> Device Flow — igual al usado por tu organización
+      </div>
+      <p style="font-size:13px;color:#555;line-height:1.6;margin-bottom:1.25rem">
+        Al conectar recibirás un código único. Solo ingrésalo en <b>microsoft.com/devicelogin</b> con tu cuenta corporativa y listo.
+      </p>
+      <div class="pnl-actions" style="margin-top:0">
+        <button class="btn-cancel" onclick="cerrar('ovSP')">Cancelar</button>
+        <button class="btn-save" style="background:#0A5C45" onclick="iniciarDeviceFlow()">🔐 Iniciar conexión</button>
+      </div>
+    </div>
+    <div id="spVista2" style="display:none">
+      <div class="sp-code-box">
+        <span class="sp-code" id="spCodigo">· · · · · ·</span>
+        <div class="sp-code-sub">Copia este código de acceso</div>
+        <span class="sp-url-link" onclick="window.open('https://microsoft.com/devicelogin','_blank')">Abrir microsoft.com/devicelogin →</span>
+      </div>
+      <div class="sp-pasos">
+        <b>1.</b> Copia el código de arriba<br>
+        <b>2.</b> Abre <b>microsoft.com/devicelogin</b> en tu navegador<br>
+        <b>3.</b> Ingresa el código y autentícate con tu cuenta <b>@agrosantamaria.com</b><br>
+        <b>4.</b> Regresa aquí — la conexión se completa automáticamente ✓
+      </div>
+      <div class="sp-status espera" id="spEstado" style="margin-top:1rem">⏳ Esperando autenticación...</div>
+      <div class="pnl-actions" style="margin-top:1rem">
+        <button class="btn-cancel" onclick="cancelarDeviceFlow()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel agregar/editar -->
+<div class="overlay" id="ovProd">
+  <div class="panel">
+    <h3 id="pTitulo">Nuevo producto</h3>
+    <div class="field"><label>Nombre del producto</label><input id="fNom" type="text" placeholder="Ej: Papel higiénico"></div>
+    <div class="field"><label>Marca</label><input id="fMarca" type="text" placeholder="Ej: Familia"></div>
+    <div class="field"><label>Categoría</label>
+      <select id="fCat">
+        <option value="ASEO">🧴 Aseo</option>
+        <option value="PAPELERIA">📄 Papelería</option>
+        <option value="CAFETERIA">☕ Cafetería</option>
+        <option value="MOBILIARIO">🗄️ Mobiliario</option>
+      </select>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Cantidad disponible</label><input id="fStock" type="number" min="0" placeholder="0"></div>
+      <div class="field"><label>Cantidad mínima</label><input id="fMin" type="number" min="0" placeholder="5"></div>
+    </div>
+    <div class="field"><label>Presentación (unidades por paquete)</label><input id="fPres" type="number" min="0" placeholder="1"></div>
+    <div class="field"><label>Fecha de vencimiento (opcional)</label><input id="fVenc" type="date"></div>
+    <div class="field"><label>Observaciones</label><input id="fObs" type="text" placeholder="Ej: Verificar con proveedor"></div>
+    <div class="pnl-actions">
+      <button class="btn-del" id="btnDel" style="display:none" onclick="eliminar()">Eliminar</button>
+      <button class="btn-cancel" onclick="cerrar('ovProd')">Cancelar</button>
+      <button class="btn-save" onclick="guardarProd()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel movimiento -->
+<div class="overlay" id="ovMov">
+  <div class="panel">
+    <h3 id="movTit">Registrar movimiento</h3>
+    <div class="mov-tabs">
+      <div class="mtab e act" id="tabE" onclick="setTM('e')">↑ Entrada</div>
+      <div class="mtab s" id="tabS" onclick="setTM('s')">↓ Salida</div>
+    </div>
+    <div class="field"><label>Cantidad</label><input id="mCant" type="number" min="1" placeholder="1"></div>
+    <div class="field"><label>Responsable</label>
+      <select id="mResp">
+        <option>Karen Murillo</option>
+        <option>Usuario 2</option><option>Usuario 3</option>
+        <option>Usuario 4</option><option>Usuario 5</option>
+      </select>
+    </div>
+    <div class="field"><label>Nota (opcional)</label><input id="mNota" type="text" placeholder="Ej: Solicitud área de comunicaciones"></div>
+    <div class="pnl-actions">
+      <button class="btn-cancel" onclick="cerrar('ovMov')">Cancelar</button>
+      <button class="btn-save" onclick="guardarMov()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SP_CLIENT_ID='d3590ed6-52b3-4102-aeff-aad2292ab01c';
+const SP_TENANT='common';
+const SP_SITE_URL='https://agrowebsas.sharepoint.com/sites/GESTIONDOCUMENTALGRUPOASM';
+const SP_SCOPE='https://agrowebsas.sharepoint.com/.default';
+const SP_CARPETA='Inventario_Suministros';
+const SP_ARCHIVO='Inventario_GestionDocumental.csv';
+
+const ICONOS={ASEO:'🧴',PAPELERIA:'📄',CAFETERIA:'☕',MOBILIARIO:'🗄️'};
+const CAT_LABEL={ASEO:'Aseo',PAPELERIA:'Papelería',CAFETERIA:'Cafetería',MOBILIARIO:'Mobiliario'};
+let nid=200,filtro='all',editId=null,movPid=null,tipoMov='e';
+let mostrarHist=false,movs=[],spToken=null,spPollTimer=null;
+
+function guardarLS(){
+  try{localStorage.setItem('inv_prods',JSON.stringify(prods));localStorage.setItem('inv_movs',JSON.stringify(movs));localStorage.setItem('inv_nid',nid);mostrarToast('✓ Cambios guardados');}
+  catch(e){mostrarToast('No se pudo guardar','err');}
+}
+function cargarLS(){
+  try{
+    const p=localStorage.getItem('inv_prods'),m=localStorage.getItem('inv_movs'),n=localStorage.getItem('inv_nid');
+    if(p)prods=JSON.parse(p);if(m)movs=JSON.parse(m);if(n)nid=parseInt(n);
+  }catch(e){}
+}
+function resetearDatos(){
+  document.getElementById('dropdown').classList.remove('open');
+  if(!confirm('¿Restablecer todos los datos al inventario original cargado desde el Excel? Se perderán todos los cambios.'))return;
+  ['inv_prods','inv_movs','inv_nid','inv_ultima_mod','inv_ultimo_resp','sp_token','sp_sync'].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+function actualizarSourceBar(resp){
+  const now=new Date();
+  const f=now.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'})+' '+now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  localStorage.setItem('inv_ultima_mod',f);localStorage.setItem('inv_ultimo_resp',resp||'—');
+  document.getElementById('ultimaMod').textContent=f;document.getElementById('ultimoResp').textContent=resp||'—';
+}
+function cargarSourceBar(){
+  const m=localStorage.getItem('inv_ultima_mod'),r=localStorage.getItem('inv_ultimo_resp');
+  if(m)document.getElementById('ultimaMod').textContent=m;if(r)document.getElementById('ultimoResp').textContent=r;
+}
+function mostrarToast(msg,tipo){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:24px;right:24px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:9999;transition:opacity .3s;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,.12)';document.body.appendChild(t);}
+  t.textContent=msg;
+  t.style.background=tipo==='err'?'#FCEBEB':tipo==='info'?'#E6F1FB':'#EAF3DE';
+  t.style.color=tipo==='err'?'#A32D2D':tipo==='info'?'#185FA5':'#3B6D11';
+  t.style.border=tipo==='err'?'1.5px solid #F09595':tipo==='info'?'1.5px solid #85B7EB':'1.5px solid #97C459';
+  t.style.opacity='1';clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},3200);
+}
+
+// ── SharePoint Device Flow ────────────────────────────────────────────────
+function abrirSharePoint(){
+  document.getElementById('dropdown').classList.remove('open');
+  document.getElementById('spVista1').style.display='block';
+  document.getElementById('spVista2').style.display='none';
+  document.getElementById('ovSP').classList.add('open');
+}
+async function iniciarDeviceFlow(){
+  document.getElementById('spVista1').style.display='none';
+  document.getElementById('spVista2').style.display='block';
+  document.getElementById('spEstado').className='sp-status espera';
+  document.getElementById('spEstado').textContent='⏳ Solicitando código a Microsoft...';
+  document.getElementById('spCodigo').textContent='· · · · · ·';
+  try{
+    const resp=await fetch(`https://login.microsoftonline.com/${SP_TENANT}/oauth2/v2.0/devicecode`,
+      {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+       body:`client_id=${SP_CLIENT_ID}&scope=${encodeURIComponent(SP_SCOPE)}`});
+    const data=await resp.json();
+    if(!data.user_code){
+      document.getElementById('spEstado').className='sp-status err';
+      document.getElementById('spEstado').textContent='❌ No se pudo obtener el código. Intenta de nuevo.';return;
+    }
+    document.getElementById('spCodigo').textContent=data.user_code;
+    document.getElementById('spEstado').className='sp-status espera';
+    document.getElementById('spEstado').textContent='⏳ Esperando que inicies sesión en microsoft.com/devicelogin...';
+    const intervalo=(data.interval||5)*1000;
+    const maxInt=Math.floor((data.expires_in||300)/(data.interval||5));
+    let intentos=0;
+    spPollTimer=setInterval(async()=>{
+      intentos++;
+      if(intentos>maxInt){clearInterval(spPollTimer);document.getElementById('spEstado').className='sp-status err';document.getElementById('spEstado').textContent='❌ Tiempo agotado. Cierra e intenta de nuevo.';return;}
+      try{
+        const tr=await fetch(`https://login.microsoftonline.com/${SP_TENANT}/oauth2/v2.0/token`,
+          {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+           body:`grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=${SP_CLIENT_ID}&device_code=${encodeURIComponent(data.device_code)}`});
+        const td=await tr.json();
+        if(td.access_token){
+          clearInterval(spPollTimer);spToken=td.access_token;
+          localStorage.setItem('sp_token',spToken);
+          document.getElementById('spEstado').className='sp-status ok';
+          document.getElementById('spEstado').textContent='✅ ¡Conectado exitosamente con SharePoint!';
+          actualizarEstadoSP(true);
+          setTimeout(()=>{cerrar('ovSP');sincronizarSP(true);},1800);
+        }
+      }catch(e){}
+    },intervalo);
+  }catch(e){
+    document.getElementById('spEstado').className='sp-status err';
+    document.getElementById('spEstado').textContent='❌ Error de red. Verifica tu conexión.';
+  }
+}
+function cancelarDeviceFlow(){if(spPollTimer)clearInterval(spPollTimer);cerrar('ovSP');}
+function desconectarSP(){
+  document.getElementById('dropdown').classList.remove('open');
+  if(!confirm('¿Desconectar SharePoint? Los datos en la nube no se borrarán.'))return;
+  spToken=null;localStorage.removeItem('sp_token');localStorage.removeItem('sp_sync');
+  actualizarEstadoSP(false);const b=document.getElementById('spSyncBadge');if(b)b.remove();
+  mostrarToast('Desconectado de SharePoint');
+}
+function actualizarEstadoSP(on){
+  document.getElementById('spDot').className='sp-dot '+(on?'on':'off');
+  document.getElementById('spLabel').textContent=on?'SharePoint conectado ✓':'Conectar con SharePoint';
+  document.getElementById('ddSPSync').style.display=on?'flex':'none';
+  document.getElementById('ddSPDesc').style.display=on?'flex':'none';
+}
+function actualizarSyncBadge(ts){
+  let b=document.getElementById('spSyncBadge');
+  if(!b){b=document.createElement('span');b.id='spSyncBadge';b.className='sp-sync-badge';document.getElementById('sourceBar').appendChild(b);}
+  b.textContent='☁️ SP: '+ts;localStorage.setItem('sp_sync',ts);
+}
+async function sincronizarSP(silencioso=false){
+  document.getElementById('dropdown').classList.remove('open');
+  const token=spToken||localStorage.getItem('sp_token');
+  if(!token){mostrarToast('Primero conecta con SharePoint','err');return;}
+  if(!silencioso)mostrarToast('Sincronizando con SharePoint...','info');
+  try{
+    const EST=p=>{if(estVenc(p.venc))return'Vencido';if(p.cant===0)return'Sin existencias';if(p.cant<p.min)return'Cantidad baja';return'Disponible';};
+    const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+    const ahora=new Date().toLocaleString('es-CO');
+    let csv='\uFEFF';
+    csv+=`INVENTARIO DE SUMINISTROS — Gestión Documental — Agropecuaria Santamaría\n`;
+    csv+=`Sitio SharePoint: ${SP_SITE_URL}\n`;
+    csv+=`Fuente: Relacion_inventario_papeleria__cafeteria_y_aseo.xlsx\n`;
+    csv+=`Última sincronización: ${ahora}\n\n`;
+    csv+='N°,Producto,Marca,Categoría,Cantidad disponible,Cantidad mínima,Presentación,Fecha vencimiento,Estado,Observaciones\n';
+    prods.forEach((p,i)=>{csv+=`${i+1},${esc(p.nom)},${esc(p.marca)},${esc(CAT_LABEL[p.cat]||p.cat)},${p.cant},${p.min},${p.pres},${esc(p.venc||'')},${esc(EST(p))},${esc(p.obs)}\n`;});
+    if(movs.length){
+      csv+='\n\nHISTORIAL DE MOVIMIENTOS\nTipo,Producto,Cantidad,Responsable,Fecha,Nota\n';
+      movs.forEach(m=>{csv+=`${m.tipo==='e'?'Entrada':'Salida'},${esc(m.nom)},${m.cant},${esc(m.resp)},${esc(m.fecha)},${esc(m.nota||'')}\n`;});
+    }
+    await fetch(`${SP_SITE_URL}/_api/web/folders`,
+      {method:'POST',headers:{'Authorization':`Bearer ${token}`,'Accept':'application/json;odata=verbose','Content-Type':'application/json;odata=verbose'},
+       body:JSON.stringify({'__metadata':{'type':'SP.Folder'},'ServerRelativeUrl':`/sites/GESTIONDOCUMENTALGRUPOASM/Shared Documents/${SP_CARPETA}`})});
+    const up=await fetch(
+      `${SP_SITE_URL}/_api/web/GetFolderByServerRelativeUrl('Shared Documents/${SP_CARPETA}')/Files/add(url='${SP_ARCHIVO}',overwrite=true)`,
+      {method:'POST',headers:{'Authorization':`Bearer ${token}`,'Accept':'application/json;odata=verbose','Content-Type':'text/plain; charset=utf-8'},body:csv});
+    if(up.ok){
+      const ts=new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      actualizarSyncBadge(ts);spToken=token;
+      if(!silencioso)mostrarToast('☁️ Guardado en SharePoint correctamente');
+    }else if(up.status===401){
+      spToken=null;localStorage.removeItem('sp_token');actualizarEstadoSP(false);
+      mostrarToast('Sesión expirada. Vuelve a conectar SharePoint','err');
+    }else{mostrarToast('Error al guardar en SharePoint ('+up.status+')','err');}
+  }catch(e){mostrarToast('No se pudo conectar con SharePoint','err');}
+}
+function cargarEstadoSP(){
+  const token=localStorage.getItem('sp_token'),ts=localStorage.getItem('sp_sync');
+  if(token){spToken=token;actualizarEstadoSP(true);}if(ts)actualizarSyncBadge(ts);
+}
+
+// ── Exportar Excel ────────────────────────────────────────────────────────
+function exportarExcel(){
+  document.getElementById('dropdown').classList.remove('open');
+  const EST=p=>{if(estVenc(p.venc))return'Vencido';if(p.cant===0)return'Sin existencias';if(p.cant<p.min)return'Cantidad baja';return'Disponible';};
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  let csv='\uFEFF';
+  csv+='INVENTARIO DE SUMINISTROS — Gestión Documental — Agropecuaria Santamaría\n';
+  csv+=`Fuente: Relacion_inventario_papeleria__cafeteria_y_aseo.xlsx,Exportado: ${hoy}\n\n`;
+  csv+='N°,Producto,Marca,Categoría,Cantidad disponible,Cantidad mínima,Presentación,Fecha vencimiento,Estado,Observaciones\n';
+  prods.forEach((p,i)=>{csv+=`${i+1},${esc(p.nom)},${esc(p.marca)},${esc(CAT_LABEL[p.cat]||p.cat)},${p.cant},${p.min},${p.pres},${esc(p.venc||'')},${esc(EST(p))},${esc(p.obs)}\n`;});
+  if(movs.length){
+    csv+='\n\nHISTORIAL DE MOVIMIENTOS\nTipo,Producto,Cantidad,Responsable,Fecha,Nota\n';
+    movs.forEach(m=>{csv+=`${m.tipo==='e'?'Entrada':'Salida'},${esc(m.nom)},${m.cant},${esc(m.resp)},${esc(m.fecha)},${esc(m.nota||'')}\n`;});
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`Inventario_GestionDocumental_${hoy.replace(/\//g,'-')}.csv`;
+  a.click();mostrarToast('📊 Excel descargado correctamente');
+}
+
+// ── Copia de seguridad ────────────────────────────────────────────────────
+function hacerCopia(){
+  document.getElementById('dropdown').classList.remove('open');
+  const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({prods,movs,nid,fecha:new Date().toISOString(),fuente:'Relacion_inventario_papeleria__cafeteria_y_aseo.xlsx'},null,2)],{type:'application/json'}));
+  a.download=`Copia_Inventario_${hoy}.json`;a.click();mostrarToast('💾 Copia de seguridad descargada');
+}
+function restaurarCopia(event){
+  document.getElementById('dropdown').classList.remove('open');
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!d.prods||!Array.isArray(d.prods)){mostrarToast('Archivo inválido','err');return;}
+      if(!confirm('¿Restaurar esta copia? Se reemplazarán los datos actuales.'))return;
+      prods=d.prods;movs=d.movs||[];nid=d.nid||200;guardarLS();render();mostrarToast('Copia restaurada correctamente');
+    }catch(err){mostrarToast('Error al leer el archivo','err');}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+
+// ── Menú ──────────────────────────────────────────────────────────────────
+function toggleMenu(){document.getElementById('dropdown').classList.toggle('open');}
+document.addEventListener('click',function(e){if(!document.getElementById('menuWrap').contains(e.target))document.getElementById('dropdown').classList.remove('open');});
+
+// ── Productos (datos del nuevo Excel) ─────────────────────────────────────
+let prods=[
+  {id:1,nom:'Portaplano',marca:'Grafitos',cat:'PAPELERIA',cant:177,min:10,pres:24,venc:'',obs:''},
+  {id:2,nom:'Gancho legajador',marca:'Rank',cat:'PAPELERIA',cant:11280,min:500,pres:20,venc:'',obs:''},
+  {id:3,nom:'Gancho legajador',marca:'Tritón',cat:'PAPELERIA',cant:1980,min:200,pres:20,venc:'',obs:''},
+  {id:4,nom:'Carpeta de yute',marca:'N/A',cat:'PAPELERIA',cant:3508,min:100,pres:250,venc:'',obs:''},
+  {id:5,nom:'Carpeta legajadora desacificada oficio 320g',marca:'Norma',cat:'PAPELERIA',cant:8300,min:50,pres:50,venc:'',obs:''},
+  {id:6,nom:'Café',marca:'Sello Rojo',cat:'CAFETERIA',cant:0,min:3,pres:0,venc:'2026-03-15',obs:'Se envían 4 unidades para oficinas del Caudal'},
+  {id:7,nom:'Aromática yerbabuena',marca:'Tisanas Angel',cat:'CAFETERIA',cant:0,min:2,pres:0,venc:'',obs:''},
+  {id:8,nom:'Aromática manzanilla',marca:'Tisanas Angel',cat:'CAFETERIA',cant:20,min:5,pres:20,venc:'2027-05-01',obs:''},
+  {id:9,nom:'Aromática toronjil',marca:'Tisanas Angel',cat:'CAFETERIA',cant:20,min:5,pres:20,venc:'2026-04-01',obs:''},
+  {id:10,nom:'Aromática frutos rojos',marca:'Hindu',cat:'CAFETERIA',cant:40,min:10,pres:20,venc:'2026-06-01',obs:''},
+  {id:11,nom:'Aromática limonaria',marca:'Tisanas Angel',cat:'CAFETERIA',cant:20,min:5,pres:20,venc:'2027-05-01',obs:''},
+  {id:12,nom:'Palito mezclador plano',marca:'Biochevere',cat:'CAFETERIA',cant:0,min:50,pres:0,venc:'',obs:''},
+  {id:13,nom:'Palito mezclador redondo',marca:'Productos Mio',cat:'CAFETERIA',cant:1000,min:100,pres:1000,venc:'',obs:''},
+  {id:14,nom:'Instacrem sobre',marca:'Instacrem',cat:'CAFETERIA',cant:0,min:10,pres:0,venc:'2027-03-01',obs:''},
+  {id:15,nom:'Azúcar sobre',marca:'Incauca',cat:'CAFETERIA',cant:0,min:30,pres:0,venc:'2026-02-23',obs:''},
+  {id:16,nom:'Azúcar sobre',marca:'Riopaila',cat:'CAFETERIA',cant:0,min:30,pres:0,venc:'',obs:''},
+  {id:17,nom:'Azúcar libra',marca:'Incauca',cat:'CAFETERIA',cant:1,min:3,pres:0,venc:'2026-12-10',obs:''},
+  {id:18,nom:'Paral',marca:'Industrias Cruz Hnos',cat:'MOBILIARIO',cant:181,min:10,pres:20,venc:'',obs:''},
+  {id:19,nom:'Tornillos',marca:'Industrias Cruz Hnos',cat:'MOBILIARIO',cant:4440,min:50,pres:60,venc:'',obs:''},
+  {id:20,nom:'Entrepaño',marca:'Industrias Cruz Hnos',cat:'MOBILIARIO',cant:270,min:10,pres:6,venc:'',obs:''},
+  {id:21,nom:'Perforadora industrial',marca:'MAE',cat:'PAPELERIA',cant:0,min:1,pres:0,venc:'',obs:''},
+  {id:22,nom:'Cinta',marca:'N/A',cat:'PAPELERIA',cant:1,min:3,pres:0,venc:'',obs:''},
+  {id:23,nom:'Copito',marca:'N/A',cat:'PAPELERIA',cant:42,min:5,pres:25,venc:'',obs:''},
+  {id:24,nom:'Caja x200',marca:'Norma',cat:'PAPELERIA',cant:1671,min:20,pres:20,venc:'',obs:''},
+  {id:25,nom:'Papel higiénico',marca:'N/A',cat:'ASEO',cant:4,min:12,pres:0,venc:'',obs:''},
+  {id:26,nom:'Servilleta',marca:'Nube',cat:'ASEO',cant:900,min:100,pres:300,venc:'',obs:''},
+  {id:27,nom:'Toalla para mano',marca:'Sanitisu',cat:'ASEO',cant:2250,min:100,pres:150,venc:'',obs:''},
+  {id:28,nom:'Detergente en polvo',marca:'PQP',cat:'ASEO',cant:7,min:5,pres:0,venc:'',obs:''},
+  {id:29,nom:'Escoba duras',marca:'N/A',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:30,nom:'Bolsa de papelera',marca:'N/A',cat:'ASEO',cant:417,min:10,pres:100,venc:'',obs:''},
+  {id:31,nom:'Alcohol antiséptico',marca:'Sannox',cat:'ASEO',cant:4,min:3,pres:0,venc:'',obs:''},
+  {id:32,nom:'Galón WD-40',marca:'N/A',cat:'PAPELERIA',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:33,nom:'Creolina',marca:'JBR',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:34,nom:'Cloro',marca:'Simaq',cat:'ASEO',cant:2,min:2,pres:0,venc:'',obs:''},
+  {id:35,nom:'Shampoo para muebles',marca:'Limpiamax',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:36,nom:'Ambientador para pisos',marca:'Acclear',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:37,nom:'Detergente líquido para losa',marca:'Proquillanos',cat:'ASEO',cant:0,min:2,pres:0,venc:'',obs:''},
+  {id:38,nom:'Limpia vidrios',marca:'N/A',cat:'ASEO',cant:0,min:1,pres:0,venc:'',obs:''},
+  {id:39,nom:'Varsol biodegradable',marca:'N/A',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:40,nom:'Jabón para manos',marca:'Simaq JG',cat:'ASEO',cant:7,min:5,pres:0,venc:'',obs:''},
+  {id:41,nom:'Dispensador papel higiénico',marca:'N/A',cat:'ASEO',cant:2,min:1,pres:0,venc:'',obs:''},
+  {id:42,nom:'Multiesponja lavar loza',marca:'N/A',cat:'ASEO',cant:2,min:3,pres:0,venc:'',obs:''},
+  {id:43,nom:'Bolsa blanca mega',marca:'N/A',cat:'ASEO',cant:10,min:5,pres:0,venc:'',obs:''},
+  {id:44,nom:'Bolsa blanca mediana',marca:'N/A',cat:'ASEO',cant:8,min:10,pres:0,venc:'',obs:''},
+  {id:45,nom:'Bolsa negra mega',marca:'N/A',cat:'ASEO',cant:8,min:5,pres:0,venc:'',obs:''},
+  {id:46,nom:'Bolsa verde mediana',marca:'N/A',cat:'ASEO',cant:6,min:5,pres:0,venc:'',obs:''},
+  {id:47,nom:'Gorro tipo oruga',marca:'XAX',cat:'ASEO',cant:563,min:50,pres:56,venc:'',obs:''},
+  {id:48,nom:'Tapaboca',marca:'XAX',cat:'ASEO',cant:750,min:100,pres:50,venc:'',obs:''},
+  {id:49,nom:'Tapaboca',marca:'MIO',cat:'ASEO',cant:50,min:20,pres:50,venc:'',obs:''},
+  {id:50,nom:'Guante talla L',marca:'Vitalmedic',cat:'ASEO',cant:500,min:50,pres:100,venc:'',obs:''},
+  {id:51,nom:'Guante talla M',marca:'Vitalmedic',cat:'ASEO',cant:300,min:50,pres:100,venc:'',obs:''},
+  {id:52,nom:'Bolígrafo',marca:'Marfil',cat:'PAPELERIA',cant:14,min:12,pres:12,venc:'',obs:''},
+  {id:53,nom:'Toalla húmeda lens',marca:'Zeizz',cat:'PAPELERIA',cant:11,min:5,pres:0,venc:'',obs:''},
+  {id:54,nom:'Pegante en barra 20g',marca:'MAE',cat:'PAPELERIA',cant:27,min:5,pres:24,venc:'',obs:''},
+  {id:55,nom:'Pegante en barra 40g',marca:'Gigo',cat:'PAPELERIA',cant:36,min:5,pres:12,venc:'',obs:''},
+  {id:56,nom:'Resaltador',marca:'Doricolor',cat:'PAPELERIA',cant:0,min:3,pres:0,venc:'',obs:''},
+  {id:57,nom:'Humedecedor',marca:'Pelikan',cat:'PAPELERIA',cant:26,min:3,pres:1,venc:'',obs:''},
+  {id:58,nom:'Humedecedor',marca:'Ahroyal',cat:'PAPELERIA',cant:18,min:3,pres:17,venc:'',obs:''},
+  {id:59,nom:'Par de pilas AAA',marca:'Energizer',cat:'PAPELERIA',cant:1,min:4,pres:0,venc:'',obs:''},
+  {id:60,nom:'Perforadora metálica',marca:'Marfil',cat:'PAPELERIA',cant:0,min:1,pres:0,venc:'',obs:''},
+  {id:61,nom:'Lápiz',marca:'Marfil',cat:'PAPELERIA',cant:0,min:6,pres:6,venc:'',obs:''},
+  {id:62,nom:'Borrador',marca:'Marfil',cat:'PAPELERIA',cant:6,min:6,pres:0,venc:'',obs:''},
+  {id:63,nom:'Cinta mágica',marca:'Eterna',cat:'PAPELERIA',cant:7,min:5,pres:0,venc:'',obs:''},
+  {id:64,nom:'Tinta sello',marca:'Onix/BYM',cat:'PAPELERIA',cant:6,min:3,pres:0,venc:'',obs:''},
+  {id:65,nom:'Chinche',marca:'Tritón',cat:'PAPELERIA',cant:50,min:10,pres:50,venc:'',obs:''},
+  {id:66,nom:'Limpión',marca:'N/A',cat:'ASEO',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:67,nom:'Sujeta gancho 2 pulgadas',marca:'MAE',cat:'PAPELERIA',cant:6,min:5,pres:0,venc:'',obs:''},
+  {id:68,nom:'Sujeta gancho 8 pulgadas',marca:'Roycolor/MAE',cat:'PAPELERIA',cant:20,min:5,pres:12,venc:'',obs:''},
+  {id:69,nom:'Cuchilla 18mm bisturí',marca:'Benssini',cat:'PAPELERIA',cant:22,min:5,pres:12,venc:'',obs:''},
+  {id:70,nom:'Regla',marca:'N/A',cat:'PAPELERIA',cant:0,min:2,pres:0,venc:'',obs:''},
+  {id:71,nom:'Grapas',marca:'Tritón',cat:'PAPELERIA',cant:7500,min:500,pres:5000,venc:'',obs:''},
+  {id:72,nom:'Clip metálico mariposa',marca:'Tritón',cat:'PAPELERIA',cant:100,min:20,pres:50,venc:'',obs:''},
+  {id:73,nom:'Dispensador de cinta',marca:'Rank',cat:'PAPELERIA',cant:2,min:2,pres:0,venc:'',obs:''},
+  {id:74,nom:'Monogafa de seguridad',marca:'Sosega',cat:'PAPELERIA',cant:4,min:2,pres:0,venc:'',obs:''},
+  {id:75,nom:'Chapa de puerta',marca:'Titanium',cat:'MOBILIARIO',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:76,nom:'Brocha 5 pulgadas',marca:'Uduke',cat:'PAPELERIA',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:77,nom:'Brocha 4 pulgadas',marca:'N/A',cat:'PAPELERIA',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:78,nom:'Pegante amarillo',marca:'Bondex',cat:'PAPELERIA',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:79,nom:'Rodillo de escáner',marca:'Epson',cat:'PAPELERIA',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:80,nom:'Tapaboca N95',marca:'3M',cat:'PAPELERIA',cant:6,min:5,pres:0,venc:'',obs:''},
+  {id:81,nom:'Resma',marca:'Reprograf',cat:'PAPELERIA',cant:2500,min:5,pres:0,venc:'',obs:''},
+  {id:82,nom:'Sticker adhesivo',marca:'Imprentar',cat:'PAPELERIA',cant:230,min:20,pres:10,venc:'',obs:''},
+  {id:83,nom:'Nevera',marca:'Challengher',cat:'MOBILIARIO',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:84,nom:'Horno microondas',marca:'Kalley',cat:'MOBILIARIO',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:85,nom:'Cafetera',marca:'Oster',cat:'MOBILIARIO',cant:1,min:1,pres:0,venc:'',obs:'La cafetera no está funcionando'},
+  {id:86,nom:'Botellón de agua',marca:'N/A',cat:'MOBILIARIO',cant:4,min:2,pres:0,venc:'',obs:''},
+  {id:87,nom:'Balde exprimidor',marca:'N/A',cat:'ASEO',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:88,nom:'Dispensador de agua',marca:'ABBA',cat:'MOBILIARIO',cant:1,min:1,pres:0,venc:'',obs:''},
+  {id:89,nom:'Planoteca',marca:'Belt Colombia',cat:'MOBILIARIO',cant:4,min:1,pres:0,venc:'',obs:''},
+  {id:90,nom:'Extintor CO2',marca:'Riaño Ramírez SAS',cat:'MOBILIARIO',cant:3,min:1,pres:0,venc:'2026-10-01',obs:''},
+  {id:91,nom:'Extintor H2O',marca:'Riaño Ramírez SAS',cat:'MOBILIARIO',cant:2,min:1,pres:0,venc:'2026-10-01',obs:''},
+  {id:92,nom:'Cuaderno',marca:'Q Nota',cat:'PAPELERIA',cant:1,min:2,pres:0,venc:'',obs:''},
+  {id:93,nom:'UPS',marca:'Chicago Digital Power',cat:'PAPELERIA',cant:0,min:1,pres:0,venc:'',obs:'Están en uso'},
+  {id:94,nom:'Bolsas herméticas tamaño oficio',marca:'N/A',cat:'PAPELERIA',cant:94,min:20,pres:0,venc:'',obs:''},
+  {id:95,nom:'Vinipel',marca:'N/A',cat:'PAPELERIA',cant:2,min:2,pres:0,venc:'',obs:''},
+  {id:96,nom:'Sharpie',marca:'N/A',cat:'PAPELERIA',cant:11,min:2,pres:1,venc:'',obs:''},
+  {id:97,nom:'Sticker notes',marca:'Kadisi',cat:'PAPELERIA',cant:2,min:3,pres:0,venc:'',obs:''},
+  {id:98,nom:'Guantes talla M',marca:'Task Pro',cat:'ASEO',cant:200,min:20,pres:100,venc:'',obs:''},
+  {id:99,nom:'Guantes talla L',marca:'Task Pro',cat:'ASEO',cant:200,min:20,pres:100,venc:'',obs:''},
+];
+
+// ── Lógica ────────────────────────────────────────────────────────────────
+function estVenc(v){if(!v)return false;return new Date(v)<=new Date();}
+function estado(p){if(estVenc(p.venc))return'venc';if(p.cant===0)return'out';if(p.cant<p.min)return'low';return'ok';}
+function pct(p){if(p.min===0)return 100;return Math.min(100,Math.round(p.cant/p.min*100));}
+
+function render(){
+  const q=document.getElementById('buscador').value.toLowerCase();
+  let lista=prods.filter(p=>{
+    if(q&&!p.nom.toLowerCase().includes(q)&&!p.marca.toLowerCase().includes(q))return false;
+    if(filtro==='ASEO'&&p.cat!=='ASEO')return false;
+    if(filtro==='PAPELERIA'&&p.cat!=='PAPELERIA')return false;
+    if(filtro==='CAFETERIA'&&p.cat!=='CAFETERIA')return false;
+    if(filtro==='MOBILIARIO'&&p.cat!=='MOBILIARIO')return false;
+    if(filtro==='ALERTA'&&estado(p)==='ok')return false;
+    return true;
+  });
+  const g=document.getElementById('grid');
+  if(!lista.length){g.innerHTML='<div class="empty-msg">No se encontraron productos</div>';renderKPI();return;}
+  g.innerHTML=lista.map(p=>{
+    const st=estado(p),pc=pct(p);
+    const barC=st==='ok'?'bar-ok':st==='low'?'bar-low':'bar-out';
+    const tagTxt=st==='ok'?'Disponible':st==='low'?'Cantidad baja':st==='out'?'Sin existencias':'Vencido';
+    const tagC=st==='ok'?'ok':st==='low'?'low':'out';
+    const vencTxt=p.venc?`<span class="venc-badge">⚠ Vence: ${p.venc}</span>`:'';
+    const obsBox=p.obs&&p.obs!=='N/A'?`<div class="obs-box">📌 ${p.obs}</div>`:'';
+    return `<div class="card ${st}">
+      <div class="cat-strip ${p.cat}"></div>
+      <div class="card-top">
+        <div class="card-icon ${p.cat}">${ICONOS[p.cat]||'📦'}</div>
+        ${vencTxt}
+      </div>
+      <div class="card-name">${p.nom}</div>
+      <div class="card-marca">${p.marca!=='N/A'?p.marca:'Sin marca'} · ${CAT_LABEL[p.cat]||p.cat}</div>
+      <div class="progress-wrap"><div class="progress-bar ${barC}" style="width:${pc}%"></div></div>
+      <div class="qty-row">
+        <div class="qty-block">
+          <div class="qty-num ${st==='ok'?'ok':st==='low'?'low':'out'}">${p.cant.toLocaleString()}</div>
+          <div class="qty-unit">unidades</div>
+        </div>
+        <div>
+          <span class="tag ${tagC}">${tagTxt}</span>
+          <div class="qty-min">mín. ${p.min.toLocaleString()}</div>
+        </div>
+      </div>
+      ${obsBox}
+      <div class="card-btns">
+        <button class="btn-edit" onclick="abrirEditar(${p.id})">✏ Editar</button>
+        <button class="btn-mov" onclick="abrirMov(${p.id})">↕ Movimiento</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderKPI();
+}
+
+function renderKPI(){
+  const t=prods.length,a=prods.filter(p=>p.cat==='ASEO').length;
+  const pp=prods.filter(p=>p.cat==='PAPELERIA').length,c=prods.filter(p=>p.cat==='CAFETERIA').length;
+  const al=prods.filter(p=>estado(p)!=='ok').length;
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi total"><div class="kpi-label">Total</div><div class="kpi-val">${t}</div></div>
+    <div class="kpi aseo"><div class="kpi-label">Aseo</div><div class="kpi-val">${a}</div></div>
+    <div class="kpi papel"><div class="kpi-label">Papelería</div><div class="kpi-val">${pp}</div></div>
+    <div class="kpi cafet"><div class="kpi-label">Cafetería</div><div class="kpi-val">${c}</div></div>
+    <div class="kpi alerta"><div class="kpi-label">Alertas</div><div class="kpi-val">${al}</div></div>`;
+}
+
+function setF(f){
+  filtro=f;
+  ['all','ASEO','PAPELERIA','CAFETERIA','MOBILIARIO','ALERTA'].forEach(x=>{
+    const el=document.getElementById('p-'+x);
+    if(el)el.className='pill'+(f===x?' a-'+x.toLowerCase():'');
+  });render();
+}
+
+function abrirAgregar(){
+  editId=null;document.getElementById('pTitulo').textContent='Nuevo producto';
+  ['fNom','fMarca','fObs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fCat').value='ASEO';
+  ['fStock','fMin','fPres','fVenc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('btnDel').style.display='none';
+  document.getElementById('ovProd').classList.add('open');
+}
+function abrirEditar(id){
+  const p=prods.find(x=>x.id===id);editId=id;
+  document.getElementById('pTitulo').textContent='Editar producto';
+  document.getElementById('fNom').value=p.nom;document.getElementById('fMarca').value=p.marca;
+  document.getElementById('fCat').value=p.cat;document.getElementById('fStock').value=p.cant;
+  document.getElementById('fMin').value=p.min;document.getElementById('fPres').value=p.pres;
+  document.getElementById('fVenc').value=p.venc||'';document.getElementById('fObs').value=p.obs||'';
+  document.getElementById('btnDel').style.display='block';
+  document.getElementById('ovProd').classList.add('open');
+}
+function guardarProd(){
+  const nom=document.getElementById('fNom').value.trim();
+  if(!nom)return alert('Escribe el nombre del producto');
+  const d={nom,marca:document.getElementById('fMarca').value.trim()||'N/A',cat:document.getElementById('fCat').value,cant:parseInt(document.getElementById('fStock').value)||0,min:parseInt(document.getElementById('fMin').value)||0,pres:parseInt(document.getElementById('fPres').value)||0,venc:document.getElementById('fVenc').value,obs:document.getElementById('fObs').value.trim()};
+  if(editId){Object.assign(prods.find(x=>x.id===editId),d);}else{prods.push({id:nid++,...d});}
+  cerrar('ovProd');actualizarSourceBar('Edición manual');guardarLS();render();
+  if(spToken||localStorage.getItem('sp_token'))sincronizarSP(true);
+}
+function eliminar(){
+  if(!confirm('¿Eliminar este producto?'))return;
+  prods=prods.filter(x=>x.id!==editId);
+  cerrar('ovProd');guardarLS();render();
+  if(spToken||localStorage.getItem('sp_token'))sincronizarSP(true);
+}
+function abrirMov(id){
+  movPid=id;const p=prods.find(x=>x.id===id);
+  document.getElementById('movTit').textContent=p.nom+' · '+p.marca;
+  document.getElementById('mCant').value='';document.getElementById('mNota').value='';
+  setTM('e');document.getElementById('ovMov').classList.add('open');
+}
+function setTM(t){
+  tipoMov=t;
+  document.getElementById('tabE').className='mtab e'+(t==='e'?' act':'');
+  document.getElementById('tabS').className='mtab s'+(t==='s'?' act':'');
+}
+function guardarMov(){
+  const cant=parseInt(document.getElementById('mCant').value)||0;
+  if(cant<=0)return alert('Ingresa una cantidad válida');
+  const p=prods.find(x=>x.id===movPid);
+  if(tipoMov==='s'&&cant>p.cant)return alert('Solo hay '+p.cant.toLocaleString()+' unidades disponibles');
+  if(tipoMov==='e')p.cant+=cant;else p.cant-=cant;
+  const now=new Date(),resp=document.getElementById('mResp').value;
+  movs.unshift({tipo:tipoMov,nom:p.nom,cant,resp,nota:document.getElementById('mNota').value.trim(),fecha:now.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' '+now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})});
+  cerrar('ovMov');actualizarSourceBar(resp);guardarLS();render();
+  if(mostrarHist)renderHist();
+  if(spToken||localStorage.getItem('sp_token'))sincronizarSP(true);
+}
+function toggleHist(){
+  mostrarHist=!mostrarHist;
+  document.getElementById('histSection').style.display=mostrarHist?'block':'none';
+  if(mostrarHist)renderHist();
+}
+function renderHist(){
+  const el=document.getElementById('histList');
+  if(!movs.length){el.innerHTML='<div class="no-hist">Aún no hay movimientos registrados</div>';return;}
+  el.innerHTML=movs.slice(0,20).map(m=>`<div class="hist-item"><div class="hico ${m.tipo}">${m.tipo==='e'?'+':'-'}</div><div class="hinfo"><div class="hname">${m.nom}</div><div class="hmeta">${m.resp} · ${m.fecha}${m.nota?' · '+m.nota:''}</div></div><div class="hqty ${m.tipo}">${m.tipo==='e'?'+':'-'}${m.cant}</div></div>`).join('');
+}
+function cerrar(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+cargarLS();cargarSourceBar();cargarEstadoSP();render();
+</script>
+</body>
+</html>
